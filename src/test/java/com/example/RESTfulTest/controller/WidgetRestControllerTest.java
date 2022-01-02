@@ -6,16 +6,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.refEq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.ArgumentMatchers.any;
 
@@ -65,7 +68,6 @@ class WidgetRestControllerTest {
     }
 
 
-
     @Test
     @DisplayName("GET /rest/widget/1 - Not Found")
     void testGetWidgetByIdNotFound() throws Exception {
@@ -88,8 +90,8 @@ class WidgetRestControllerTest {
 
         // Execute the POST request
         mockMvc.perform(post("/rest/widget")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(asJsonString(widgetToPost)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(asJsonString(widgetToPost)))
 
                 // Validate the response code and content type
                 .andExpect(status().isCreated())
@@ -105,6 +107,78 @@ class WidgetRestControllerTest {
                 .andExpect(jsonPath("$.description", is("This is my widget")))
                 .andExpect(jsonPath("$.version", is(1)));
     }
+
+
+    @Test
+    @DisplayName("PUT /rest/widget/{id} success")
+    void testUpdateWidget() throws Exception {
+        Widget widgetToUpdate = new Widget(1L, "Hola", "Update widget", 1);
+        Widget widgetToReturn = new Widget(1L, "Hola viejo", "Old widget", 1);
+
+        Optional optional = Optional.of(widgetToReturn);
+
+        doReturn(optional).when(service).findById(any());
+        doReturn(widgetToUpdate).when(service).save(any());
+
+        mockMvc.perform(put("/rest/widget/{id}", 1L)
+                        .header(HttpHeaders.IF_MATCH, 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(asJsonString(widgetToUpdate))
+                )
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+
+                .andExpect(jsonPath("$.id", is(1)))
+                .andExpect(jsonPath("$.name", is("Hola")))
+                .andExpect(jsonPath("$.description", is("Update widget")))
+                .andExpect(jsonPath("$.version", is(1)));
+
+
+        Mockito.verify(service).findById(1L);
+        Mockito.verify(service).save(refEq(widgetToUpdate));
+    }
+
+    @Test
+    @DisplayName("PUT /rest/proper/widget/{id} success")
+    void testUpdateProperWidget() throws Exception {
+        Widget widgetToUpdate = new Widget(1L, "Hola", "Update widget", 1);
+        Widget widgetToReturn = new Widget(1L, "Hola viejo", "Old widget", 1);
+
+        Optional optional = Optional.of(widgetToReturn);
+
+        doReturn(optional).when(service).findById(any());
+        doReturn(widgetToUpdate).when(service).save(any());
+
+        mockMvc.perform(put("/rest/proper/widget/{id}", 1L)
+                        .header(HttpHeaders.IF_MATCH, 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(asJsonString(widgetToUpdate))
+                )
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+
+                .andExpect(jsonPath("$.id", is(1)))
+                .andExpect(jsonPath("$.name", is("Hola")))
+                .andExpect(jsonPath("$.description", is("Update widget")))
+                .andExpect(jsonPath("$.version", is(1)));
+
+
+        Mockito.verify(service).findById(1L);
+        Mockito.verify(service).save(refEq(widgetToUpdate));
+    }
+
+
+    @Test
+    @DisplayName("DELETE /rest/widget/{id} - success")
+    void testDeleteWidgetById() throws Exception {
+
+        // Execute the GET request
+        mockMvc.perform(delete("/rest/widget/{id}", 1L))
+                // Validate the response code
+                .andExpect(status().isOk());
+
+    }
+
 
 
     static String asJsonString(final Object obj) {
